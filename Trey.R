@@ -60,21 +60,20 @@ for (i in 1:nrow(df)){
   print(round(100*(i/nrow(df)),3))
 }
 data.frame(df$id, distance_to_closest) %>% write.csv("distance.csv")
+distance = read.csv("distance.csv")[,-1]
+df_dis = df %>% left_join(distance, by = "id")
+prox_df = df_dis %>% group_by(id_closest) %>% summarize(.groups = "drop", count_closest = n()) %>% arrange(desc(count_closest)) %>% transmute(id = id_closest, count_closest) # gives each ID the number of properties for which it is the closest property.
+df_dis = df_dis %>% left_join(prox_df, by = "id") %>% select(id, count_closest, dis_closest, id_closest, everything())
+df_dis$count_closest[which(is.na(df_dis$count_closest))] = 0
 '
 
 ## Proximity Analysis
 df = read.csv("Airbnb_NYC_2019.csv")[,-1]
-distance = read.csv("distance.csv")[,-1]
-df_dis = df %>% left_join(distance, by = "id")
+table(df$count_closest)
 
-prox_df = df_dis %>% group_by(id_closest) %>% summarize(.groups = "drop", count_closest = n()) %>% arrange(desc(count_closest)) %>% transmute(id = id_closest, count_closest) # gives each ID the number of properties for which it is the closest property.
-df_dis = df_dis %>% left_join(prox_df, by = "id")
-df_dis$count_closest[which(is.na(df_dis$count_closest))] = 0
-table(df_dis$count_closest)
-
-dis_tb = df_dis %>% group_by(count_closest = as.factor(count_closest)) %>% summarize(.groups = "drop", n = n(),mean_dis_closest = mean(dis_closest),median_dis_closest = median(dis_closest),sd_dis_closest = sd(dis_closest))
+dis_tb = df %>% group_by(count_closest = as.factor(count_closest)) %>% summarize(.groups = "drop", n = n(),mean_dis_closest = mean(dis_closest),median_dis_closest = median(dis_closest),sd_dis_closest = sd(dis_closest))
 kable(dis_tb)
-df_dis %>% ggplot(aes(x = as.factor(count_closest), y = sqrt(dis_closest), fill = as.factor(count_closest))) + geom_boxplot(alpha = I(2/3)) + theme_bw() +
+df %>% ggplot(aes(x = as.factor(count_closest), y = sqrt(dis_closest), fill = as.factor(count_closest))) + geom_boxplot(alpha = I(2/3)) + theme_bw() +
   theme(legend.position = "none") + scale_x_discrete("Closest to (Count)") + scale_y_continuous("Distance to Closest Property (Square Root)", breaks = seq(0,.15,.025)) + scale_fill_manual(values = c("#FFFFB2", "#FECC5C", "#FD8D3C", "#F03B20", "#BD0026")) +
   ggtitle("Proximity Analysis", subtitle = "Number of Nearby Properties versus Distance to Closest Property")
 
